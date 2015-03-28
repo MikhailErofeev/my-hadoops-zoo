@@ -1,11 +1,23 @@
 #!/bin/sh
 #start hadoop as a daemon, open ports some ports, name it had00p
-#map it http/hdfs ports namenode to virtual machine address ("/etc/bash boot2docker ip" to known it)
+#map ports to virtual machine address ("/etc/bash boot2docker ip" to known it)
+
 #1 -d -- run docer as a daemon, 2 -d -- run bootstrap.sh in inf loop
 #https://github.com/sequenceiq/docker-hadoop-ubuntu/blob/master/bootstrap.sh
-docker run -d -p 192.168.59.103:50070:50070 -p 192.168.59.103:9000:9000  --name had00p sequenceiq/hadoop-docker:2.6.0 /etc/bootstrap.sh -d
-
+#50070 - http namenode
+#9000 - hdfs namenode
+#8032 - yarn resourcemanager http
+#8088 - yarn resourcemanager
+docker run -d \
+  -p 192.168.59.103:50070:50070 \
+   -p 192.168.59.103:9000:9000 \
+   -p 192.168.59.103:8032:8032 \
+   -p 192.168.59.103:8088:8088 \
+   --name had00p sequenceiq/hadoop-docker:2.6.0 /etc/bootstrap.sh -d
+#look for init process of bootstrap
 docker attach --sig-proxy=false had00p
+
+#namenode http://192.168.59.103:50070/
 
 docker exec -it had00p bash
 
