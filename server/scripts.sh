@@ -1,17 +1,31 @@
 #!/bin/sh
+#start hadoop as a daemon, open ports some ports, name it had00p
+#map it http/hdfs ports namenode to virtual machine address ("/etc/bash boot2docker ip" to known it)
+#1 -d -- run docer as a daemon, 2 -d -- run bootstrap.sh in inf loop
+#https://github.com/sequenceiq/docker-hadoop-ubuntu/blob/master/bootstrap.sh
+docker run -d -p 192.168.59.103:50070:50070 -p 192.168.59.103:9000:9000  --name had00p sequenceiq/hadoop-docker:2.6.0 /etc/bootstrap.sh -d
 
-#1. Открыть порты хадупа наружу
-#2. Залить файл в хдфс
-#3. Посчитать что-нибудь
+docker attach --sig-proxy=false had00p
 
-#start hadoop and login to console
-docker run -P -i -t sequenceiq/hadoop-docker:2.6.0 /etc/bootstrap.sh -bash
+docker exec -it had00p bash
 
-#start hadoop as a daemon and open ports #FIXME close after full init :(
-docker run -d -P sequenceiq/hadoop-docker:2.6.0 /etc/bootstrap.sh
-#ps running containers
-docker ps -l
+#ps containers (-l -- last, -a -- all)
+docker ps
+docker inspect had00p | less
+docker kill JOB_ID
+docker kill had00p && docker rm had00p
 
-#info by name
-docker inspect admiring_engelbart | less
+
+# ports
+# http://blog.cloudera.com/blog/2009/08/hadoop-default-ports-quick-reference/
+#HDFS
+# Namenode (http)	50070	dfs.http.address
+# Namenode (hdfs)	9000
+# Datanodes	50075	dfs.datanode.http.address
+# Secondarynamenode	50090	dfs.secondary.http.address
+# Backup/Checkpoint node?	50105	dfs.backup.http.address
+#MR
+# Jobracker	50030	mapred.job.tracker.http.address
+# Tasktrackers	50060	mapred.task.tracker.http.address
+
 
