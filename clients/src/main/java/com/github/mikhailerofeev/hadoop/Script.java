@@ -1,5 +1,7 @@
 package com.github.mikhailerofeev.hadoop;
 
+import com.github.mikhailerofeev.hadoop.fun.UncheckedProcedure;
+import com.google.common.base.Supplier;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
@@ -12,7 +14,6 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 import java.io.*;
-import java.net.InetSocketAddress;
 import java.net.URI;
 
 
@@ -22,7 +23,8 @@ import java.net.URI;
  */
 public class Script extends Configured implements Tool {
 
-  public static final String BOOT_TO_DOCKER_IP = "192.168.59.103";
+  public static final String BOOT_TO_DOCKER_IP = "172.17.0.4";
+//  public static final String BOOT_TO_DOCKER_IP = "localhost";
 
   /*
     * TODO map failed, jobhistory not enabled.
@@ -36,58 +38,63 @@ public class Script extends Configured implements Tool {
 
   @Override
   public int run(String[] args) throws Exception {
-    String host = BOOT_TO_DOCKER_IP;
-    int nameNodeHdfsPort = 9000;
-    int yarnPort = 8032;
-    String hdfsAddr = "hdfs://" + host + ":" + nameNodeHdfsPort + "/";
-    String yarnAddr = host + ":" + yarnPort;
-    String sampleHdfsPath = hdfsAddr + "user/m-erofeev/sample-20150101.data";
+    String sampleHdfsPath = "sample-20150101.data";
     String srcUri = "/Users/m-erofeev/sample-20150101.data";
-
-//    write(srcUri, sampleHdfsPath);
-
-//    InputStream read = read(sampleHdfsPath);
-//    IOUtils.copyBytes(read, System.out, 4096);
+//    write(srcUri, "/user/m-erofeev/" + sampleHdfsPath);
     System.out.println("start map");
-    simpleMr(hdfsAddr, yarnAddr, sampleHdfsPath);
+    simpleMr(sampleHdfsPath);
     return 0;
   }
 
-  private static void simpleMr(String hdfsAddr, String yarnAddr, String sampleHdfsPath) throws IOException {
+  @Override
+  public Configuration getConf() {
+    String host = BOOT_TO_DOCKER_IP;
+    int nameNodeHdfsPort = 9000;
+    int yarnPort = 8032;
+    String yarnAddr = host + ":" + yarnPort;
+    String hdfsAddr = "hdfs://" + host + ":" + nameNodeHdfsPort + "/";
 
-    JobConf conf = new JobConf(MyMapper.class);
-    conf.set("yarn.resourcemanager.address", yarnAddr);
-    conf.set("mapreduce.framework.name", "yarn");
-    conf.set("fs.default.name", hdfsAddr);
+    Configuration configutation = new Configuration();
+    configutation.set("yarn.resourcemanager.address", yarnAddr);
+    configutation.set("mapreduce.framework.name", "yarn");
+    configutation.set("fs.defaultFS", hdfsAddr);
+    return configutation;
+  }
+
+
+  private void simpleMr(String inputPath) throws IOException {
+
+    final JobConf conf = new JobConf(getConf(), Script.class);
     conf.setJobName("fun");
     conf.setJarByClass(MyMapper.class);
     conf.setMapperClass(MyMapper.class);
-
     conf.setInputFormat(TextInputFormat.class);
     conf.setOutputFormat(TextOutputFormat.class);
 
-    FileInputFormat.setInputPaths(conf, sampleHdfsPath);
-    String tmpMRreturn = hdfsAddr + "user/m-erofeev/map-test.data";
-    Path returnPath = new Path(tmpMRreturn);
+    FileInputFormat.setInputPaths(conf, inputPath);
+    String tmpMRreturn = "/user/m-erofeev/map-test.data";
+    final Path returnPath = new Path(tmpMRreturn);
     FileOutputFormat.setOutputPath(conf, returnPath);
 
-    AccessUtils.execAsRootUnsafe(() -> {
-      Configuration con = new Configuration();
-      FileSystem fs = FileSystem.get(URI.create(hdfsAddr), con);
-      if (fs.exists(returnPath)) {
-        fs.delete(returnPath, true);
+    AccessUtils.execAsRootUnsafe(new UncheckedProcedure() {
+      @Override
+      public void call() throws Exception {
+        FileSystem fs = FileSystem.get(Script.this.getConf());
+        if (fs.exists(returnPath)) {
+          fs.delete(returnPath, true);
+        }
       }
     });
-
-    String hostname = yarnAddr.split(":")[0];
-    int port = Integer.valueOf(yarnAddr.split(":")[1]);
-    AccessUtils.execAsRootUnsafe(() -> {
-      RunningJob runningJob = new JobClient(new InetSocketAddress(hostname, port), conf).submitJob(conf);
-      runningJob.waitForCompletion();
+    AccessUtils.execAsRootUnsafe(new UncheckedProcedure() {
+      @Override
+      public void call() throws Exception {
+        RunningJob runningJob = JobClient.runJob(conf);
+        runningJob.waitForCompletion();
+      }
     });
   }
 
-  static class MyMapper extends MapReduceBase implements Mapper<LongWritable, Text, Text, Text> {
+  public static class MyMapper extends MapReduceBase implements Mapper<LongWritable, Text, Text, Text> {
 
     @Override
     public void map(LongWritable key, Text value, OutputCollector<Text, Text> outputCollector, Reporter reporter) throws IOException {
@@ -97,30 +104,35 @@ public class Script extends Configured implements Tool {
   }
 
 
-  private static InputStream read(String uri) throws IOException {
-    return AccessUtils.execAsRoot(() -> {
-      try {
-        Configuration conf = new Configuration();
-        FileSystem fs = FileSystem.get(URI.create(uri), conf);
-        InputStream in = null;
-        in = fs.open(new Path(uri));
-        return in;
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
+  private static InputStream read(final String uri) throws IOException {
+    return AccessUtils.execAsRoot(new Supplier<InputStream>() {
+      @Override
+      public InputStream get() {
+        try {
+          Configuration conf = new Configuration();
+          FileSystem fs = FileSystem.get(URI.create(uri), conf);
+          InputStream in = null;
+          in = fs.open(new Path(uri));
+          return in;
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
       }
     });
   }
 
 
-  public static void write(final String localSrc, final String dst) {
-    AccessUtils.execAsRootUnsafe(() -> {
-          InputStream in = new BufferedInputStream(new FileInputStream(localSrc));
-          Configuration conf = new Configuration();
-          FileSystem fs = FileSystem.get(URI.create(dst), conf);
-          OutputStream out = null;
-          out = fs.create(new Path(dst));
-          IOUtils.copyBytes(in, out, 4096, true);
-        }
+  public void write(final String localSrc, final String dst) {
+    AccessUtils.execAsRootUnsafe(new UncheckedProcedure() {
+                                   @Override
+                                   public void call() throws Exception {
+                                     InputStream in = new BufferedInputStream(new FileInputStream(localSrc));
+                                     FileSystem fs = FileSystem.get(Script.this.getConf());
+                                     OutputStream out = null;
+                                     out = fs.create(new Path(dst));
+                                     IOUtils.copyBytes(in, out, 4096, true);
+                                   }
+                                 }
     );
   }
 

@@ -16,11 +16,14 @@ docker run -d \
    -p 9000:9000 \
    -p 8032:8032 \
    -p 8088:8088 \
+   -p 19888:19888 \
+   -v /Users/m-erofeev/docker-mnt/:/mnt \
    --name had00p sequenceiq/hadoop-docker:2.6.0 /etc/bootstrap.sh -d
 #look for init process of bootstrap
 docker attach --sig-proxy=false had00p
 
 #namenode web-interface http://192.168.59.103:50070/
+#resource manager web-interface http://192.168.59.103:8088/
 
 docker exec -it had00p bash
 
