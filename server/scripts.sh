@@ -10,15 +10,6 @@
 #8088 - yarn resourcemanager
 
 docker run -d \
-  -p 50070:50070 \
-   -p 9000:9000 \
-   -p 8032:8032 \
-   -p 8042:8042 \
-   -p 50020:50020 \
-   -p 50090:50090 \
-   -p 50010:50010 \
-   -p 8088:8088 \
-   -p 19888:19888 \
    -h had00p-master \
    -v /Users/m-erofeev/docker-mnt/:/mnt \
    --name had00p sequenceiq/hadoop-docker:2.6.0 /etc/bootstrap.sh -d
@@ -26,11 +17,16 @@ docker run -d \
 #add route to internal gateway or something like that i don't care to our docker virtual machine ip  ("/etc/bash boot2docker ip" to known it)
 sudo route add -net 172.17.0.0/16 192.168.59.103
 
+sudo sed -i '' '/had00p/d' /etc/hosts
+had00pIp=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' had00p)
+export had00pIp
+sudo -E /bin/bash -c 'echo "$had00pIp had00p-master" >> /etc/hosts'
+
 #look for init process of bootstrap
 docker attach --sig-proxy=false had00p
 
-#namenode web-interface http://192.168.59.103:50070/
-#resource manager web-interface http://192.168.59.103:8088/
+#namenode web-interface http://had00p-master:50070/
+#resource manager web-interface http://had00p-master:8088/
 
 docker exec -it had00p bash
 

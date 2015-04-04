@@ -24,7 +24,7 @@ import java.util.Iterator;
  */
 public class Script extends Configured implements Tool {
 
-  public static final String BOOT_TO_DOCKER_IP = "172.17.0.7";
+  public static final String HADOOP_MASTER_HOST = "had00p-master";
 
   /*
     * TODO map failed, jobhistory not enabled.
@@ -46,7 +46,7 @@ public class Script extends Configured implements Tool {
 
   @Override
   public Configuration getConf() {
-    String host = BOOT_TO_DOCKER_IP;
+    String host = HADOOP_MASTER_HOST;
     int nameNodeHdfsPort = 9000;
     int yarnPort = 8032;
     String yarnAddr = host + ":" + yarnPort;
