@@ -7,12 +7,15 @@ import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IOUtils;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.*;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 import java.io.*;
 import java.net.URI;
+import java.util.Iterator;
 
 
 /**
@@ -35,11 +38,9 @@ public class Script extends Configured implements Tool {
 
   @Override
   public int run(String[] args) throws Exception {
-    String sampleHdfsPath = "sample-20150101.data";
-    String srcUri = "/Users/m-erofeev/sample-20150101.data";
-    write(srcUri, "/user/m-erofeev/" + sampleHdfsPath);
-    System.out.println("start map");
-    simpleMr(sampleHdfsPath);
+    String srcUri = "tolstoy.txt";
+    write(srcUri, "/user/m-erofeev/" + srcUri);
+    simpleMr(srcUri);
     return 0;
   }
 
@@ -68,8 +69,14 @@ public class Script extends Configured implements Tool {
     conf.setJobName("fun");
     conf.setJar("target/clients-1.0-SNAPSHOT.jar");
     conf.setMapperClass(MyMapper.class);
+    conf.setCombinerClass(MyReducer.class);
+    conf.setReducerClass(MyReducer.class);
+
     conf.setInputFormat(TextInputFormat.class);
     conf.setOutputFormat(TextOutputFormat.class);
+
+    conf.setMapOutputKeyClass(Text.class);
+    conf.setMapOutputValueClass(LongWritable.class);
 
     FileInputFormat.setInputPaths(conf, inputPath);
     String tmpMRreturn = "/user/m-erofeev/map-test.data";
@@ -92,6 +99,33 @@ public class Script extends Configured implements Tool {
         runningJob.waitForCompletion();
       }
     });
+    String output = org.apache.commons.io.IOUtils.toString(read(tmpMRreturn));
+    System.out.println(output);
+  }
+
+  public static class MyMapper extends MapReduceBase implements Mapper<LongWritable, Text, Text, LongWritable> {
+
+    @Override
+    public void map(LongWritable key, Text value, OutputCollector<Text, LongWritable> outputCollector, Reporter reporter) throws IOException {
+      String[] split = value.toString().split(" ");
+      for (String s : split) {
+        outputCollector.collect(new Text(s), new LongWritable(1));
+      }
+
+    }
+  }
+
+  public static class MyReducer extends MapReduceBase implements Reducer<Text, LongWritable, Text, LongWritable> {
+
+
+    @Override
+    public void reduce(Text key, Iterator<LongWritable> values, OutputCollector<Text, LongWritable> output, Reporter reporter) throws IOException {
+      long ret = 0;
+      while (values.hasNext()) {
+        ret += values.next().get();
+      }
+      output.collect(key, new LongWritable(ret));
+    }
   }
 
 
