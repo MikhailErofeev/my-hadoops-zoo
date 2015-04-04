@@ -7,8 +7,6 @@ import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.*;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
@@ -23,8 +21,7 @@ import java.net.URI;
  */
 public class Script extends Configured implements Tool {
 
-  public static final String BOOT_TO_DOCKER_IP = "172.17.0.4";
-//  public static final String BOOT_TO_DOCKER_IP = "localhost";
+  public static final String BOOT_TO_DOCKER_IP = "172.17.0.7";
 
   /*
     * TODO map failed, jobhistory not enabled.
@@ -40,7 +37,7 @@ public class Script extends Configured implements Tool {
   public int run(String[] args) throws Exception {
     String sampleHdfsPath = "sample-20150101.data";
     String srcUri = "/Users/m-erofeev/sample-20150101.data";
-//    write(srcUri, "/user/m-erofeev/" + sampleHdfsPath);
+    write(srcUri, "/user/m-erofeev/" + sampleHdfsPath);
     System.out.println("start map");
     simpleMr(sampleHdfsPath);
     return 0;
@@ -58,6 +55,9 @@ public class Script extends Configured implements Tool {
     configutation.set("yarn.resourcemanager.address", yarnAddr);
     configutation.set("mapreduce.framework.name", "yarn");
     configutation.set("fs.defaultFS", hdfsAddr);
+
+    configutation.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
+    configutation.set("fs.file.impl", org.apache.hadoop.fs.LocalFileSystem.class.getName());
     return configutation;
   }
 
@@ -66,7 +66,7 @@ public class Script extends Configured implements Tool {
 
     final JobConf conf = new JobConf(getConf(), Script.class);
     conf.setJobName("fun");
-    conf.setJarByClass(MyMapper.class);
+    conf.setJar("target/clients-1.0-SNAPSHOT.jar");
     conf.setMapperClass(MyMapper.class);
     conf.setInputFormat(TextInputFormat.class);
     conf.setOutputFormat(TextOutputFormat.class);
@@ -92,15 +92,6 @@ public class Script extends Configured implements Tool {
         runningJob.waitForCompletion();
       }
     });
-  }
-
-  public static class MyMapper extends MapReduceBase implements Mapper<LongWritable, Text, Text, Text> {
-
-    @Override
-    public void map(LongWritable key, Text value, OutputCollector<Text, Text> outputCollector, Reporter reporter) throws IOException {
-      String[] split = value.toString().split("\t+");
-      outputCollector.collect(new Text(split[0]), new Text("blah-blah"));
-    }
   }
 
 

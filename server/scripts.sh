@@ -1,8 +1,5 @@
 #!/bin/sh
 
-#add route to internal gateway or something like that i don't care to our docker virtual machine ip  ("/etc/bash boot2docker ip" to known it)
-sudo route add -net 172.17.0.0/16 192.168.59.103
-
 #start hadoop as a daemon, open ports some ports, name it had00p
 #map ports to virtual machine address
 #1 -d -- run docer as a daemon, 2 -d -- run bootstrap.sh in inf loop
@@ -11,14 +8,24 @@ sudo route add -net 172.17.0.0/16 192.168.59.103
 #9000 - hdfs namenode
 #8032 - yarn resourcemanager http
 #8088 - yarn resourcemanager
+
 docker run -d \
   -p 50070:50070 \
    -p 9000:9000 \
    -p 8032:8032 \
+   -p 8042:8042 \
+   -p 50020:50020 \
+   -p 50090:50090 \
+   -p 50010:50010 \
    -p 8088:8088 \
    -p 19888:19888 \
+   -h had00p-master \
    -v /Users/m-erofeev/docker-mnt/:/mnt \
    --name had00p sequenceiq/hadoop-docker:2.6.0 /etc/bootstrap.sh -d
+
+#add route to internal gateway or something like that i don't care to our docker virtual machine ip  ("/etc/bash boot2docker ip" to known it)
+sudo route add -net 172.17.0.0/16 192.168.59.103
+
 #look for init process of bootstrap
 docker attach --sig-proxy=false had00p
 
