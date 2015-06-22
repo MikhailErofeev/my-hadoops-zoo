@@ -39,7 +39,8 @@ public class Script extends Configured implements Tool {
   @Override
   public int run(String[] args) throws Exception {
     String srcUri = "tolstoy.txt";
-    write(srcUri, "/user/m-erofeev/" + srcUri);
+    FileSystem fs = FileSystem.get(Script.this.getConf());
+    write("/Users/erofeev/projects/my-hadoops-zoo/clients/src/main/resources/" + srcUri, "user/erofeev/" +  srcUri, fs);
     simpleMr(srcUri);
     return 0;
   }
@@ -147,15 +148,15 @@ public class Script extends Configured implements Tool {
   }
 
 
-  public void write(final String localSrc, final String dst) {
+  public void write(final String localSrc, final String dst, final FileSystem fs) {
     AccessUtils.execAsRootUnsafe(new UncheckedProcedure() {
                                    @Override
                                    public void call() throws Exception {
-                                     InputStream in = new BufferedInputStream(new FileInputStream(localSrc));
-                                     FileSystem fs = FileSystem.get(Script.this.getConf());
-                                     OutputStream out = null;
-                                     out = fs.create(new Path(dst));
-                                     IOUtils.copyBytes(in, out, 4096, true);
+//                                     InputStream in = new BufferedInputStream(new FileInputStream(localSrc));
+//                                     OutputStream out = null;
+//                                     out = fs.create(new Path(dst));
+                                     fs.copyFromLocalFile(false, new Path(localSrc), new Path(dst));
+//                                     IOUtils.copyBytes(in, out, 4096, true);
                                    }
                                  }
     );

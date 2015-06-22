@@ -6,12 +6,12 @@
 #https://github.com/sequenceiq/docker-hadoop-ubuntu/blob/master/bootstrap.sh
 #50070 - http namenode
 #9000 - hdfs namenode
-#8032 - yarn resourcemanager http
-#8088 - yarn resourcemanager
+#8032 - yarn resourcemanager
+#8088 - yarn resourcemanager http
 
 docker run -d \
    -h had00p-master \
-   -v /Users/m-erofeev/docker-mnt/:/mnt \
+   -v /Users/erofeev/docker-mnt/:/mnt \
    --name had00p sequenceiq/hadoop-docker:2.6.0 /etc/bootstrap.sh -d
 
 #add route to internal gateway or something like that i don't care to our docker virtual machine ip  ("/etc/bash boot2docker ip" to known it)
